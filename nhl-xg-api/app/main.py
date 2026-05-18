@@ -1,12 +1,15 @@
 from fastapi import FastAPI
 from app.schemas import ShotRequest, ShotResponse
 from app.model import predict_xg
+from prometheus_fastapi_instrumentator import Instrumentator
 
 app = FastAPI(
     title="NHL Expected Goals (xG) API",
     description="Predict the probability a shot results in a goal using a trained XGBoost model.",
     version="1.0.0",
 )
+
+Instrumentator().instrument(app).expose(app)
 
 @app.get("/health")
 def health():
