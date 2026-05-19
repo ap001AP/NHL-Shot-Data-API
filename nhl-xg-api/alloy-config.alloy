@@ -1,0 +1,19 @@
+prometheus.scrape "nhl_api" {
+  targets = [{
+    __address__ = "localhost:8000",
+  }]
+  scrape_interval = "15s"
+  metrics_path    = "/metrics"
+  forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+prometheus.remote_write "grafana_cloud" {
+  endpoint {
+    url = "https://prometheus-prod-32-prod-ca-east-0.grafana.net/api/prom/push"
+
+    basic_auth {
+      username = "3222572"
+      password = env("GRAFANA_API_KEY")
+    }
+  }
+}
