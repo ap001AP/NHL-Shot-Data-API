@@ -18,23 +18,20 @@ Instrumentator().instrument(app).expose(app)
 def push_metrics():
     import os
     import requests
-    import snappy
     from prometheus_client import generate_latest, REGISTRY
-    from prometheus_client.exposition import choose_encoder
 
-    url = "https://prometheus-prod-32-prod-ca-east-0.grafana.net/api/prom/push"
+    # Use the import endpoint instead of push
+    url = "https://prometheus-prod-32-prod-ca-east-0.grafana.net/api/v1/import/prometheus"
     username = "3222572"
     password = os.environ.get("GRAFANA_API_KEY", "")
 
     while True:
         try:
-            # Use OpenMetrics format which Grafana Cloud accepts as plain text
-            encoder, content_type = choose_encoder("application/openmetrics-text")
-            metrics_data = encoder(REGISTRY)
+            metrics_data = generate_latest(REGISTRY)
             response = requests.post(
                 url,
                 data=metrics_data,
-                headers={"Content-Type": content_type},
+                headers={"Content-Type": "text/plain"},
                 auth=(username, password),
                 timeout=10,
             )
