@@ -16,8 +16,10 @@ app = FastAPI(
 Instrumentator().instrument(app).expose(app)
 
 def push_metrics():
-    """Push metrics to Grafana Cloud every 15 seconds."""
     import os
+    import requests
+    from prometheus_client import generate_latest, REGISTRY
+    
     url = "https://prometheus-prod-32-prod-ca-east-0.grafana.net/api/prom/push"
     username = "3222572"
     password = os.environ.get("GRAFANA_API_KEY", "")
@@ -28,12 +30,14 @@ def push_metrics():
             response = requests.post(
                 url,
                 data=metrics_data,
-                headers={"Content-Type": "text/plain"},
+                headers={"Content-Type": "text/plain; version=0.0.4"},
                 auth=(username, password),
                 timeout=10
             )
             if response.status_code not in (200, 204):
-                print(f"Metrics push failed: {response.status_code}")
+                print(f"Metrics push failed: {response.status_code} - {response.text[:100]}")
+            else:
+                print(f"Metrics pushed successfully")
         except Exception as e:
             print(f"Metrics push error: {e}")
         time.sleep(15)
