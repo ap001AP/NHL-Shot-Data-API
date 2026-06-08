@@ -18,26 +18,30 @@ Instrumentator().instrument(app).expose(app)
 def push_metrics():
     import os
     import requests
+    import snappy
     from prometheus_client import generate_latest, REGISTRY
-    
+    from prometheus_client.exposition import choose_encoder
+
     url = "https://prometheus-prod-32-prod-ca-east-0.grafana.net/api/prom/push"
     username = "3222572"
     password = os.environ.get("GRAFANA_API_KEY", "")
-    
+
     while True:
         try:
-            metrics_data = generate_latest(REGISTRY)
+            # Use OpenMetrics format which Grafana Cloud accepts as plain text
+            encoder, content_type = choose_encoder("application/openmetrics-text")
+            metrics_data = encoder(REGISTRY)
             response = requests.post(
                 url,
                 data=metrics_data,
-                headers={"Content-Type": "text/plain; version=0.0.4"},
+                headers={"Content-Type": content_type},
                 auth=(username, password),
-                timeout=10
+                timeout=10,
             )
             if response.status_code not in (200, 204):
-                print(f"Metrics push failed: {response.status_code} - {response.text[:100]}")
+                print(f"Metrics push failed: {response.status_code} - {response.text[:150]}")
             else:
-                print(f"Metrics pushed successfully")
+                print("Metrics pushed successfully")
         except Exception as e:
             print(f"Metrics push error: {e}")
         time.sleep(15)
