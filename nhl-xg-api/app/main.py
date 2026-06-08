@@ -50,6 +50,7 @@ def start_metrics_pusher():
         thread.start()
         print("Metrics pusher started")
 
+
 @app.get("/health")
 def health():
     return {"status": "ok", "model": "xg_model v1.0.0"}
