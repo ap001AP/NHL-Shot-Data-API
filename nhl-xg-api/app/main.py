@@ -20,17 +20,32 @@ def push_metrics():
     import requests
     from prometheus_client import generate_latest, REGISTRY
 
-    # Use the import endpoint instead of push
-    url = "https://prometheus-prod-32-prod-ca-east-0.grafana.net/api/v1/import/prometheus"
+    # InfluxDB line protocol endpoint — accepts plain text
+    url = "https://prometheus-prod-32-prod-ca-east-0.grafana.net/api/v1/push/influx/write"
     username = "3222572"
     password = os.environ.get("GRAFANA_API_KEY", "")
 
     while True:
         try:
-            metrics_data = generate_latest(REGISTRY)
+            # Convert prometheus metrics to influx line protocol
+            lines = []
+            from prometheus_client.parser import text_string_to_metric_families
+            metrics_text = generate_latest(REGISTRY).decode("utf-8")
+            
+            for family in text_string_to_metric_families(metrics_text):
+                for sample in family.samples:
+                    tags = ",".join(f'{k}={v.replace(" ", "_")}' 
+                                   for k, v in sample.labels.items() if v)
+                    measurement = sample.name
+                    if tags:
+                        line = f"{measurement},{tags} value={sample.value}"
+                    else:
+                        line = f"{measurement} value={sample.value}"
+                    lines.append(line)
+
             response = requests.post(
                 url,
-                data=metrics_data,
+                data="\n".join(lines),
                 headers={"Content-Type": "text/plain"},
                 auth=(username, password),
                 timeout=10,
@@ -42,7 +57,7 @@ def push_metrics():
         except Exception as e:
             print(f"Metrics push error: {e}")
         time.sleep(15)
-
+        
 @app.on_event("startup")
 def start_metrics_pusher():
     if __import__("os").environ.get("GRAFANA_API_KEY"):
